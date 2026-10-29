@@ -1,0 +1,3 @@
+ff982d0b6121b9b8f73081ebca3f712a5cb3f8b3755cd732fc132a6c4a874cd0  RealityDesync-1.0-Windows-x64.zip
+b9c07d2953ee46908772601ded5cd24cf8db4f1bad350db40c1c62dd8efd3413  RealityDesync-1.0-Linux-x64.zip
+0b406cac5da9b7a0f44e740079700c05b5a9f647dfe184d170590d4156e58cb4  Windows/Reality Desync.vst3/Contents/x86_64-win/Reality Desync.vst3
