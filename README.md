@@ -80,4 +80,4 @@ Third-party: JUCE 8 (AGPL/commercial licence) for the full edition; Steinberg VS
 | `prebuilt/` | Lite-edition builds (no GUI) |
 | `GUIDE.md` | In-depth user guide and preset list |
 
-No licence file has been added yet. Until one is, all rights are reserved by the author.
+Licence: the Reality Desync source is MIT (see [LICENSE](LICENSE)). The full-edition binaries link JUCE, which is AGPLv3 unless you hold a JUCE commercial licence, so distributing those binaries means complying with the AGPL (source available, which this repository provides).
