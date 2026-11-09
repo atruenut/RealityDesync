@@ -501,6 +501,7 @@ RealityDesyncEditor::~RealityDesyncEditor() {
 }
 
 void RealityDesyncEditor::timerCallback() {
+    if (proc.currentPresetName != shownPresetName) setPresetLabel(proc.currentPresetName, proc.currentPresetDescription);
     const auto& t = proc.engine.telemetry();
     const double lat = proc.engine.latencySamples() / juce::jmax(1.0, proc.getSampleRate()) * 1000.0;
     status.setText(juce::String("Clock: ") + (t.hostSynced.load() ? "host transport" : "free-running") + " @ " + juce::String(t.bpm.load(), 1) + " BPM    |    Latency: " +
@@ -509,6 +510,7 @@ void RealityDesyncEditor::timerCallback() {
 }
 
 void RealityDesyncEditor::setPresetLabel(const juce::String& name, const juce::String& desc) {
+    shownPresetName = name;
     proc.currentPresetName = name;
     proc.currentPresetDescription = desc;
     descLabel.setText(desc.isEmpty() ? juce::String() : desc, juce::dontSendNotification);
@@ -569,6 +571,7 @@ void RealityDesyncEditor::presetChosen() {
     if (id < 1000) {
         const auto& p = list[(size_t)(id - 1)];
         rdp::applyPreset(proc.apvts, p);
+        proc.currentProgram = id - 1;
         setPresetLabel(p.name, p.description);
     } else {
         const int i = id - 1000;

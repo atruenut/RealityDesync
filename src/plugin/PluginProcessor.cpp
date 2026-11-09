@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 
 #include "PluginEditor.h"
+#include "Presets.h"
 
 RealityDesyncProcessor::RealityDesyncProcessor()
     : AudioProcessor(BusesProperties()
@@ -66,6 +67,23 @@ void RealityDesyncProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
     engine.setParams(rdp::readParams(apvts));
     engine.process(buffer.getWritePointer(0), buffer.getWritePointer(1), numSamples, host);
+}
+
+int RealityDesyncProcessor::getNumPrograms() { return static_cast<int>(rdp::factoryPresets().size()); }
+
+const juce::String RealityDesyncProcessor::getProgramName(int index) {
+    const auto& list = rdp::factoryPresets();
+    return index >= 0 && index < static_cast<int>(list.size()) ? list[static_cast<size_t>(index)].name : juce::String();
+}
+
+void RealityDesyncProcessor::setCurrentProgram(int index) {
+    const auto& list = rdp::factoryPresets();
+    if (index < 0 || index >= static_cast<int>(list.size())) return;
+    currentProgram = index;
+    const auto& p = list[static_cast<size_t>(index)];
+    rdp::applyPreset(apvts, p);
+    currentPresetName = p.name;
+    currentPresetDescription = p.description;
 }
 
 juce::AudioProcessorEditor* RealityDesyncProcessor::createEditor() { return new RealityDesyncEditor(*this); }

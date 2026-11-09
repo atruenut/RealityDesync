@@ -1,0 +1,122 @@
+name: Build and release
+
+# Push a tag like v1.1.0 to build Windows, macOS and Linux and publish a GitHub release.
+# "Run workflow" (workflow_dispatch) builds everything and keeps the zips as run artifacts only.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Windows-x64,       os: windows-latest }
+          - { name: macOS-universal,   os: macos-latest }
+          - { name: Linux-x64,         os: ubuntu-22.04 }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build libasound2-dev libx11-dev libxcomposite-dev \
+            libxcursor-dev libxext-dev libxinerama-dev libxrandr-dev libxrender-dev libfreetype-dev libfontconfig1-dev libgl1-mesa-dev
+
+      - name: Configure
+        shell: bash
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build plugin and tests
+        shell: bash
+        run: cmake --build build --config Release --target RealityDesync_VST3 rd_dsp_tests --parallel 4
+
+      - name: DSP tests
+        shell: bash
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Locate the built plugin
+        id: plugin
+        shell: bash
+        run: |
+          P="build/RealityDesync_artefacts/Release/VST3/Reality Desync.vst3"
+          test -e "$P" || { echo "plugin not found"; find build -name "*.vst3" | head; exit 1; }
+          echo "path=$P" >> "$GITHUB_OUTPUT"
+
+      - name: Sign (macOS ad-hoc) and check architectures
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          P="${{ steps.plugin.outputs.path }}"
+          codesign --force --deep --sign - "$P"
+          codesign --verify --deep --verbose=2 "$P"
+          lipo -archs "$P/Contents/MacOS/Reality Desync"
+
+      - name: Add install notes
+        shell: bash
+        run: |
+          D="${{ steps.plugin.outputs.path }}/.."
+          case "${{ runner.os }}" in
+            Windows) printf '%s\r\n' "Copy the folder 'Reality Desync.vst3' to C:\Program Files\Common Files\VST3\ and rescan plugins in your DAW." > "$D/INSTALL.txt" ;;
+            macOS)   printf '%s\n' "Copy 'Reality Desync.vst3' to /Library/Audio/Plug-Ins/VST3/ (all users) or ~/Library/Audio/Plug-Ins/VST3/ (just you), then rescan plugins." "If macOS says the plugin is damaged or from an unidentified developer, run:  xattr -dr com.apple.quarantine \"/Library/Audio/Plug-Ins/VST3/Reality Desync.vst3\"" > "$D/INSTALL.txt" ;;
+            Linux)   printf '%s\n' "Copy 'Reality Desync.vst3' to ~/.vst3/ (just you) or /usr/lib/vst3/ (all users), then rescan plugins." > "$D/INSTALL.txt" ;;
+          esac
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $d = "build/RealityDesync_artefacts/Release/VST3"
+          Compress-Archive -Path "$d/Reality Desync.vst3", "$d/INSTALL.txt" -DestinationPath "RealityDesync-${{ github.ref_name }}-${{ matrix.name }}.zip"
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          D=build/RealityDesync_artefacts/Release/VST3
+          mkdir -p stage && cp -R "$D/Reality Desync.vst3" "$D/INSTALL.txt" stage/
+          ditto -c -k --sequesterRsrc stage "RealityDesync-${{ github.ref_name }}-${{ matrix.name }}.zip"
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          D=build/RealityDesync_artefacts/Release/VST3
+          (cd "$D" && zip -qr "$GITHUB_WORKSPACE/RealityDesync-${{ github.ref_name }}-${{ matrix.name }}.zip" "Reality Desync.vst3" INSTALL.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: RealityDesync-*.zip
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          cd dist && sha256sum RealityDesync-*.zip > SHA256SUMS.txt && cat SHA256SUMS.txt && cd ..
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --title "Reality Desync ${TAG#v}" --notes-file RELEASE_NOTES.md
+          fi

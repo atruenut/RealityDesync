@@ -30,7 +30,7 @@ Goal: a 2-bar drum loop at 120 BPM that stays groovy but keeps sliding out of ph
 | 5 | Desync 80%, Snap Every `4 bars`, Build 90% | Drift builds for almost the whole cycle, then snaps. |
 | 6 | Time Wobble 60%, Pitch Drift 40%, Slice Slip 60% | Choose *which* aspects drift. |
 
-Save that as your own preset (JUCE edition: **Save** button; Windows DLL edition: use your host's preset saving).
+Save that as your own preset with the **Save** button in the plugin's top bar (it is stored in your user folder and appears under "User" in the preset list).
 
 ## Controls
 

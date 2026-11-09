@@ -141,6 +141,7 @@ private:
     std::vector<int> menuToFactory;  // combo item id -> factory index (or -1)
     std::vector<juce::File> userFiles;
     int currentItemId = 0;
+    juce::String shownPresetName;
     bool ignorePresetChange = false;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> snapAttach;
 
